@@ -6,6 +6,8 @@
         <meta name="viewport" content="initial-scale=1,user-scalable=no,maximum-scale=1,width=device-width">
         <meta name="mobile-web-app-capable" content="yes">
         <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="theme-color" content="#0d6efd">
+        <link rel="manifest" href="manifest.json">
         <link rel="stylesheet" href="css/leaflet.css">
         <link rel="stylesheet" href="css/L.Control.Layers.Tree.css">
         <link rel="stylesheet" href="css/L.Control.Locate.min.css">
@@ -51,6 +53,7 @@
                 <div class="collapse navbar-collapse" id="navbarContent">
                     <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                         <li class="nav-item"><a class="nav-link" href="#" onclick="map.fitBounds([[13.5006,-16.5931],[14.4759,-15.2260]])"><i class="fas fa-home"></i> Accueil</a></li>
+                        <li class="nav-item" id="install-app-container" style="display:none;"><a class="nav-link fw-bold text-warning" href="#" id="btn-install"><i class="fas fa-download"></i> Installer l'App</a></li>
                         <li class="nav-item"><a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#aboutModal"><i class="fas fa-info-circle"></i> A propos</a></li>
                         <li class="nav-item"><a class="nav-link" href="#" data-bs-toggle="offcanvas" data-bs-target="#offcanvasLeft"><i class="fas fa-layer-group"></i> Catalogue</a></li>
                         <li class="nav-item dropdown">
@@ -347,9 +350,15 @@
         var zoomControl = L.control.zoom({
             position: 'bottomright'
         }).addTo(map);
+        // Configuration GPS optimisée (Google Maps style)
         L.control.locate({
-            locateOptions: {maxZoom: 19},
-            strings: {title: "Ma position"}
+            locateOptions: {
+                maxZoom: 17, 
+                enableHighAccuracy: true
+            },
+            strings: {title: "Ma position"},
+            setView: 'untilPan', // Suit l'utilisateur jusqu'à ce qu'il bouge la carte
+            keepCurrentZoomLevel: false
         }).addTo(map);
         var measureControl = new L.Control.Measure({
             position: 'topleft',
@@ -1510,6 +1519,34 @@
                 }
             });
         };
+
+        // --- PWA & Service Worker ---
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('Service Worker enregistré', reg))
+                    .catch(err => console.log('Erreur Service Worker', err));
+            });
+        }
+
+        // Gestion du bouton d'installation
+        let deferredPrompt;
+        const installContainer = document.getElementById('install-app-container');
+        const installBtn = document.getElementById('btn-install');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            installContainer.style.display = 'block';
+        });
+
+        installBtn.addEventListener('click', (e) => {
+            installContainer.style.display = 'none';
+            deferredPrompt.prompt();
+            deferredPrompt.userChoice.then((choiceResult) => {
+                deferredPrompt = null;
+            });
+        });
 
         </script>
         <!-- Bootstrap Bundle with Popper -->

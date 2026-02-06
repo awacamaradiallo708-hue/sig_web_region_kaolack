@@ -1,0 +1,51 @@
+/* css/custom.css */
+
+/* Optimisation Mobile */
+html, body {
+    overscroll-behavior: none; /* Empêche le "pull-to-refresh" sur mobile qui recharge la carte */
+}
+
+/* Ajustement de la carte pour prendre tout l'espace sous la navbar */
+#map {
+    height: 100vh; /* Fallback */
+    height: calc(100dvh - 56px); /* Dynamic Viewport Height pour mobile (barre d'adresse) */
+    width: 100%;
+}
+
+/* Style des boutons Leaflet pour être plus tactiles */
+.leaflet-touch .leaflet-bar a {
+    width: 34px;
+    height: 34px;
+    line-height: 34px;
+}
+
+/* Amélioration de la lisibilité de la navbar sur mobile */
+.navbar-brand {
+    font-size: 1.1rem;
+    font-weight: bold;
+}
+
+/* Ajustement du footer pour ne pas gêner la navigation */
+#footer-bar {
+    background-color: rgba(255, 255, 255, 0.9);
+    padding: 2px 10px;
+    font-size: 0.8rem;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    z-index: 1000;
+    border-top-right-radius: 5px;
+}
+
+/* Style spécifique pour l'icône de mesure */
+.leaflet-control-measure-toggle, .leaflet-control-measure-toggle:hover {
+    background-image: none !important; /* On utilise FontAwesome via JS */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #444;
+    font-size: 14px;
+}
+.leaflet-control-measure-toggle:hover {
+    color: #000;
+}
