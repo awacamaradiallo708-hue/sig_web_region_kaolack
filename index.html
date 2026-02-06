@@ -1,0 +1,1518 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="initial-scale=1,user-scalable=no,maximum-scale=1,width=device-width">
+        <meta name="mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <link rel="stylesheet" href="css/leaflet.css">
+        <link rel="stylesheet" href="css/L.Control.Layers.Tree.css">
+        <link rel="stylesheet" href="css/L.Control.Locate.min.css">
+        <link rel="stylesheet" href="css/qgis2web.css">
+        <link rel="stylesheet" href="css/fontawesome-all.min.css">
+        <link rel="stylesheet" href="css/leaflet-search.css">
+        <link rel="stylesheet" href="css/leaflet.photon.css">
+        <link rel="stylesheet" href="css/leaflet-measure.css">
+        <link rel="stylesheet" href="css/custom.css">
+        <!-- Bootstrap CSS -->
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+        <!-- Chart.js -->
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <!-- Leaflet MiniMap CSS -->
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet-minimap/3.6.1/Control.MiniMap.min.css" />
+        <style>
+        html, body {
+            width: 100%;
+            height: 100%;
+            padding: 0;
+            margin: 0;
+        }
+        body { padding-top: 56px; overflow: hidden; }
+        #map {
+            width: 100%;
+            height: calc(100vh - 86px);
+        }
+        .custom-navbar {
+            background-color: #0d6efd !important; /* Couleur bleue Bootstrap */
+            z-index: 1030; /* S'assure que le menu est au-dessus de la carte */
+        }
+        </style>
+        <title>Cartographie des limites administratives de la Région de KAOLACK</title>
+    </head>
+    <body>
+        <!-- Barre de navigation -->
+        <nav class="navbar navbar-expand-lg navbar-dark custom-navbar fixed-top shadow">
+            <div class="container-fluid">
+                <a class="navbar-brand" href="#"><i class="fas fa-globe-africa me-2"></i>SIG Kaolack</a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarContent">
+                    <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                        <li class="nav-item"><a class="nav-link" href="#" onclick="map.fitBounds([[13.5006,-16.5931],[14.4759,-15.2260]])"><i class="fas fa-home"></i> Accueil</a></li>
+                        <li class="nav-item"><a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#aboutModal"><i class="fas fa-info-circle"></i> A propos</a></li>
+                        <li class="nav-item"><a class="nav-link" href="#" data-bs-toggle="offcanvas" data-bs-target="#offcanvasLeft"><i class="fas fa-layer-group"></i> Catalogue</a></li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Requêtes</a>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#attrQueryModal"><i class="fas fa-search"></i> Requête Attributaire</a></li>
+                                <li><a class="dropdown-item" href="#" onclick="enableSpatialQuery()"><i class="fas fa-vector-square"></i> Requête Spatiale (Rectangle)</a></li>
+                            </ul>
+                        </li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Outils</a>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="#" onclick="toggleMeasure()"><i class="fas fa-ruler"></i> Mesure</a></li>
+                                <li><a class="dropdown-item" href="#" onclick="map.zoomIn()"><i class="fas fa-search-plus"></i> Zoom Avant</a></li>
+                                <li><a class="dropdown-item" href="#" onclick="map.zoomOut()"><i class="fas fa-search-minus"></i> Zoom Arrière</a></li>
+                                <li><a class="dropdown-item" href="#" onclick="window.print()"><i class="fas fa-print"></i> Imprimer</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="#" onclick="showGlobalStats()"><i class="fas fa-chart-pie"></i> Statistiques Globales</a></li>
+                                <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#downloadModal"><i class="fas fa-download"></i> Centre de Téléchargement</a></li>
+                            </ul>
+                        </li>
+                        <li class="nav-item"><a class="nav-link" href="#" data-bs-toggle="offcanvas" data-bs-target="#offcanvasRight"><i class="fas fa-map"></i> Fonds & Légende</a></li>
+                    </ul>
+                    <form class="d-flex" role="search" onsubmit="return false;">
+                        <div id="navbar-search-container" class="me-2"></div>
+                    </form>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Panneau Gauche (Couches) -->
+        <div class="offcanvas offcanvas-start" tabindex="-1" id="offcanvasLeft" data-bs-scroll="true" data-bs-backdrop="false">
+            <div class="offcanvas-header bg-light">
+                <h5 class="offcanvas-title"><i class="fas fa-layer-group me-2"></i>Couches de données</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+            </div>
+            <div class="offcanvas-body" id="layers-container">
+                <!-- Le contrôle des couches sera déplacé ici via JS -->
+            </div>
+        </div>
+
+        <!-- Panneau Droit (Fonds de carte & Légende) -->
+        <div class="offcanvas offcanvas-end" tabindex="-1" id="offcanvasRight" data-bs-scroll="true" data-bs-backdrop="false">
+            <div class="offcanvas-header bg-light">
+                <h5 class="offcanvas-title"><i class="fas fa-map me-2"></i>Fonds & Légende</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+            </div>
+            <div class="offcanvas-body">
+                <h6 class="fw-bold text-primary">Fonds de carte</h6>
+                <div class="list-group mb-4" id="basemap-list">
+                    <label class="list-group-item">
+                        <input class="form-check-input me-1" type="radio" name="basemap" value="osm" checked onchange="switchBasemap('osm')">
+                        OpenStreetMap
+                    </label>
+                    <label class="list-group-item">
+                        <input class="form-check-input me-1" type="radio" name="basemap" value="google" onchange="switchBasemap('google')">
+                        Google Maps
+                    </label>
+                    <label class="list-group-item">
+                        <input class="form-check-input me-1" type="radio" name="basemap" value="hybrid" onchange="switchBasemap('hybrid')">
+                        Google Satellite
+                    </label>
+                </div>
+                <h6 class="fw-bold text-primary">Légende</h6>
+                <div id="legend-container">
+                    <!-- Légende statique ou dynamique -->
+                    <div class="small text-muted" id="legend-content">Activez une couche pour voir sa légende.</div>
+                </div>
+                <h6 class="fw-bold text-primary mt-4">Statistiques (Sélection)</h6>
+                <canvas id="statsChart" width="300" height="200"></canvas>
+            </div>
+        </div>
+
+        <div id="map">
+        </div>
+        
+        <!-- Barre de pied de page (Coordonnées & Echelle) -->
+        <div id="footer-bar">
+            <div id="mouse-coords"><i class="fas fa-location-arrow me-1"></i>Lat: -, Lon: -</div>
+            <div id="map-scale"></div>
+        </div>
+
+        <!-- Modal A propos -->
+        <div class="modal fade" id="aboutModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">A propos</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p>Application Web SIG de la région de Kaolack.</p>
+                        <p>Développée avec QGIS, QGIS2WEB et Bootstrap 5.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Requête Attributaire -->
+        <div class="modal fade" id="attrQueryModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title"><i class="fas fa-search me-2"></i>Requête Attributaire</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">Département</label>
+                            <select id="query-dept" class="form-select" onchange="zoomToFeature(this.value, 'Departement')">
+                                <option value="">Choisir...</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Arrondissement</label>
+                            <select id="query-arr" class="form-select" onchange="zoomToFeature(this.value, 'Arrondissement')">
+                                <option value="">Choisir...</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Localité</label>
+                            <select id="query-loc" class="form-select" onchange="zoomToFeature(this.value, 'Localite')">
+                                <option value="">Choisir...</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Téléchargement -->
+        <div class="modal fade" id="downloadModal" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title"><i class="fas fa-download me-2"></i>Centre de Téléchargement</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <table class="table table-striped">
+                            <thead><tr><th>Couche</th><th>Format JSON</th><th>Format CSV</th></tr></thead>
+                            <tbody id="download-table-body">
+                                <!-- Rempli par JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Résultat Spatial -->
+        <div class="modal fade" id="spatialResultModal" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header"><h5 class="modal-title">Résultat de la sélection</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                    <div class="modal-body" id="spatial-result-body"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Statistiques Globales -->
+        <div class="modal fade" id="globalStatsModal" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title"><i class="fas fa-chart-line me-2"></i>Tableau de bord statistique</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6 class="text-center text-secondary">Typologie du réseau routier</h6>
+                                <canvas id="roadsChart"></canvas>
+                            </div>
+                            <div class="col-md-6">
+                                <h6 class="text-center text-secondary">Inventaire des lieux</h6>
+                                <canvas id="infraChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="mt-4 p-3 bg-light rounded border">
+                            <div id="stats-summary" class="text-center fw-bold text-dark"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script src="js/qgis2web_expressions.js"></script>
+        <script src="js/leaflet.js"></script>
+        <script src="js/L.Control.Layers.Tree.min.js"></script>
+        <script src="js/L.Control.Locate.min.js"></script>
+        <script src="js/leaflet.rotatedMarker.js"></script>
+        <script src="js/leaflet.pattern.js"></script>
+        <script src="js/leaflet-hash.js"></script>
+        <script src="js/Autolinker.min.js"></script>
+        <script src="js/rbush.min.js"></script>
+        <script src="js/labelgun.min.js"></script>
+        <script src="js/labels.js"></script>
+        <script src="js/leaflet.photon.js"></script>
+        <script src="js/leaflet-measure.js"></script>
+        <script src="js/leaflet-search.js"></script>
+        <!-- Leaflet MiniMap JS -->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-minimap/3.6.1/Control.MiniMap.min.js"></script>
+        <script src="data/Region_Kaolack_3.js"></script>
+        <script src="data/Departement_Kaolack_4.js"></script>
+        <script src="data/Arrondissement_Kaolack_5.js"></script>
+        <script src="data/Route_Kaolack_6.js"></script>
+        <script src="data/Localite_Kaolack_7.js"></script>
+        <script src="data/School_Kaolack_8.js"></script>
+        <script>
+        var highlightLayer;
+        function highlightFeature(e) {
+            highlightLayer = e.target;
+
+            if (e.target.feature.geometry.type === 'LineString' || e.target.feature.geometry.type === 'MultiLineString') {
+              highlightLayer.setStyle({
+                color: 'rgba(255, 255, 0, 1.00)',
+              });
+            } else {
+              highlightLayer.setStyle({
+                fillColor: 'rgba(255, 255, 0, 1.00)',
+                fillOpacity: 1
+              });
+            }
+            highlightLayer.openPopup();
+        }
+        var map = L.map('map', {
+            zoomControl:false, maxZoom:28, minZoom:1
+        }).fitBounds([[13.500615094919555,-16.593109021458616],[14.475909470158145,-15.226029726252388]]);
+        var hash = new L.Hash(map);
+        map.attributionControl.setPrefix('<a href="https://github.com/tomchadwin/qgis2web" target="_blank">qgis2web</a> &middot; <a href="https://leafletjs.com" title="A JS library for interactive maps">Leaflet</a> &middot; <a href="https://qgis.org">QGIS</a>');
+        var autolinker = new Autolinker({truncate: {length: 30, location: 'smart'}});
+        // remove popup's row if "visible-with-data"
+        function removeEmptyRowsFromPopupContent(content, feature) {
+         var tempDiv = document.createElement('div');
+         tempDiv.innerHTML = content;
+         var rows = tempDiv.querySelectorAll('tr');
+         for (var i = 0; i < rows.length; i++) {
+             var td = rows[i].querySelector('td.visible-with-data');
+             var key = td ? td.id : '';
+             if (td && td.classList.contains('visible-with-data') && feature.properties[key] == null) {
+                 rows[i].parentNode.removeChild(rows[i]);
+             }
+         }
+         return tempDiv.innerHTML;
+        }
+        // modify popup if contains media
+        function addClassToPopupIfMedia(content, popup) {
+            var tempDiv = document.createElement('div');
+            tempDiv.innerHTML = content;
+            var imgTd = tempDiv.querySelector('td img');
+            if (imgTd) {
+                var src = imgTd.getAttribute('src');
+                if (/\.(jpg|jpeg|png|gif|bmp|webp|avif)$/i.test(src)) {
+                    popup._contentNode.classList.add('media');
+                    setTimeout(function() {
+                        popup.update();
+                    }, 10);
+                } else if (/\.(mp3|wav|ogg|aac)$/i.test(src)) {
+                    var audio = document.createElement('audio');
+                    audio.controls = true;
+                    audio.src = src;
+                    imgTd.parentNode.replaceChild(audio, imgTd);
+                    popup._contentNode.classList.add('media');
+                    setTimeout(function() {
+                        popup.setContent(tempDiv.innerHTML);
+                        popup.update();
+                    }, 10);
+                } else if (/\.(mp4|webm|ogg|mov)$/i.test(src)) {
+                    var video = document.createElement('video');
+                    video.controls = true;
+                    video.src = src;
+                    video.style.width = "400px";
+                    video.style.height = "300px";
+                    video.style.maxHeight = "60vh";
+                    video.style.maxWidth = "60vw";
+                    imgTd.parentNode.replaceChild(video, imgTd);
+                    popup._contentNode.classList.add('media');
+                    // Aggiorna il popup quando il video carica i metadati
+                    video.addEventListener('loadedmetadata', function() {
+                        popup.update();
+                    });
+                    setTimeout(function() {
+                        popup.setContent(tempDiv.innerHTML);
+                        popup.update();
+                    }, 10);
+                } else {
+                    popup._contentNode.classList.remove('media');
+                }
+            } else {
+                popup._contentNode.classList.remove('media');
+            }
+        }
+        var zoomControl = L.control.zoom({
+            position: 'bottomright'
+        }).addTo(map);
+        L.control.locate({
+            locateOptions: {maxZoom: 19},
+            strings: {title: "Ma position"}
+        }).addTo(map);
+        var measureControl = new L.Control.Measure({
+            position: 'topleft',
+            primaryLengthUnit: 'meters',
+            secondaryLengthUnit: 'kilometers',
+            primaryAreaUnit: 'sqmeters',
+            secondaryAreaUnit: 'hectares'
+        });
+        measureControl.addTo(map);
+        document.getElementsByClassName('leaflet-control-measure-toggle')[0].innerHTML = '';
+        document.getElementsByClassName('leaflet-control-measure-toggle')[0].className += ' fas fa-ruler';
+        var bounds_group = new L.featureGroup([]);
+        function setBounds() {
+        }
+        map.createPane('pane_GoogleMaps_0');
+        map.getPane('pane_GoogleMaps_0').style.zIndex = 400;
+        var layer_GoogleMaps_0 = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+            pane: 'pane_GoogleMaps_0',
+            opacity: 1.0,
+            attribution: '',
+            minZoom: 1,
+            maxZoom: 28,
+            minNativeZoom: 0,
+            maxNativeZoom: 19
+        });
+        layer_GoogleMaps_0;
+        map.addLayer(layer_GoogleMaps_0);
+        map.createPane('pane_GoogleSatelliteHybrid_1');
+        map.getPane('pane_GoogleSatelliteHybrid_1').style.zIndex = 401;
+        var layer_GoogleSatelliteHybrid_1 = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+            pane: 'pane_GoogleSatelliteHybrid_1',
+            opacity: 1.0,
+            attribution: '',
+            minZoom: 1,
+            maxZoom: 28,
+            minNativeZoom: 0,
+            maxNativeZoom: 19
+        });
+        layer_GoogleSatelliteHybrid_1;
+        map.addLayer(layer_GoogleSatelliteHybrid_1);
+        map.createPane('pane_OpenStreetMap_2');
+        map.getPane('pane_OpenStreetMap_2').style.zIndex = 402;
+        var layer_OpenStreetMap_2 = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            pane: 'pane_OpenStreetMap_2',
+            opacity: 1.0,
+            attribution: '',
+            minZoom: 1,
+            maxZoom: 28,
+            minNativeZoom: 0,
+            maxNativeZoom: 19
+        });
+        layer_OpenStreetMap_2;
+        map.addLayer(layer_OpenStreetMap_2);
+        function pop_Region_Kaolack_3(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    for (var i in e.target._eventParents) {
+                        if (typeof e.target._eventParents[i].resetStyle === 'function') {
+                            e.target._eventParents[i].resetStyle(e.target);
+                        }
+                    }
+                    if (typeof layer.closePopup == 'function') {
+                        layer.closePopup();
+                    } else {
+                        layer.eachLayer(function(feature){
+                            feature.closePopup()
+                        });
+                    }
+                },
+                mouseover: highlightFeature,
+            });
+            var popupContent = '<table>\
+                    <tr>\
+                        <td colspan="2"><strong>Code</strong><br />' + (feature.properties['Code'] !== null ? autolinker.link(String(feature.properties['Code']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2"><strong>Région</strong><br />' + (feature.properties['Région'] !== null ? autolinker.link(String(feature.properties['Région']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2"><strong>Shape_Area</strong><br />' + (feature.properties['Shape_Area'] !== null ? autolinker.link(String(feature.properties['Shape_Area']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_Region_Kaolack_3_0() {
+            return {
+                pane: 'pane_Region_Kaolack_3',
+                opacity: 1,
+                color: 'rgba(0,0,0,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 4.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+        }
+        map.createPane('pane_Region_Kaolack_3');
+        map.getPane('pane_Region_Kaolack_3').style.zIndex = 403;
+        map.getPane('pane_Region_Kaolack_3').style['mix-blend-mode'] = 'normal';
+        var layer_Region_Kaolack_3 = new L.geoJson(json_Region_Kaolack_3, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_Region_Kaolack_3',
+            layerName: 'layer_Region_Kaolack_3',
+            pane: 'pane_Region_Kaolack_3',
+            onEachFeature: pop_Region_Kaolack_3,
+            style: style_Region_Kaolack_3_0,
+        });
+        bounds_group.addLayer(layer_Region_Kaolack_3);
+        map.addLayer(layer_Region_Kaolack_3);
+        function pop_Departement_Kaolack_4(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    for (var i in e.target._eventParents) {
+                        if (typeof e.target._eventParents[i].resetStyle === 'function') {
+                            e.target._eventParents[i].resetStyle(e.target);
+                        }
+                    }
+                    if (typeof layer.closePopup == 'function') {
+                        layer.closePopup();
+                    } else {
+                        layer.eachLayer(function(feature){
+                            feature.closePopup()
+                        });
+                    }
+                },
+                mouseover: highlightFeature,
+            });
+            var popupContent = '<table>\
+                    <tr>\
+                        <td colspan="2"><strong>reg</strong><br />' + (feature.properties['reg'] !== null ? autolinker.link(String(feature.properties['reg']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2"><strong>dept</strong><br />' + (feature.properties['dept'] !== null ? autolinker.link(String(feature.properties['dept']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2"><strong>cod_dept</strong><br />' + (feature.properties['cod_dept'] !== null ? autolinker.link(String(feature.properties['cod_dept']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2"><strong>Shape_Area</strong><br />' + (feature.properties['Shape_Area'] !== null ? autolinker.link(String(feature.properties['Shape_Area']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_Departement_Kaolack_4_0(feature) {
+            switch(String(feature.properties['dept'])) {
+                case 'GUINGUINEO':
+                    return {
+                pane: 'pane_Departement_Kaolack_4',
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(117,202,117,1.0)',
+                interactive: true,
+            }
+                    break;
+                case 'KAOLACK':
+                    return {
+                pane: 'pane_Departement_Kaolack_4',
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(229,36,229,1.0)',
+                interactive: true,
+            }
+                    break;
+                case 'NIORO':
+                    return {
+                pane: 'pane_Departement_Kaolack_4',
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(91,164,238,1.0)',
+                interactive: true,
+            }
+                    break;
+                default:
+                    return {
+                pane: 'pane_Departement_Kaolack_4',
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(214,150,86,1.0)',
+                interactive: true,
+            }
+                    break;
+            }
+        }
+        map.createPane('pane_Departement_Kaolack_4');
+        map.getPane('pane_Departement_Kaolack_4').style.zIndex = 404;
+        map.getPane('pane_Departement_Kaolack_4').style['mix-blend-mode'] = 'normal';
+        var layer_Departement_Kaolack_4 = new L.geoJson(json_Departement_Kaolack_4, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_Departement_Kaolack_4',
+            layerName: 'layer_Departement_Kaolack_4',
+            pane: 'pane_Departement_Kaolack_4',
+            onEachFeature: pop_Departement_Kaolack_4,
+            style: style_Departement_Kaolack_4_0,
+        });
+        bounds_group.addLayer(layer_Departement_Kaolack_4);
+        map.addLayer(layer_Departement_Kaolack_4);
+        function pop_Arrondissement_Kaolack_5(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    for (var i in e.target._eventParents) {
+                        if (typeof e.target._eventParents[i].resetStyle === 'function') {
+                            e.target._eventParents[i].resetStyle(e.target);
+                        }
+                    }
+                    if (typeof layer.closePopup == 'function') {
+                        layer.closePopup();
+                    } else {
+                        layer.eachLayer(function(feature){
+                            feature.closePopup()
+                        });
+                    }
+                },
+                mouseover: highlightFeature,
+            });
+            var popupContent = '<table>\
+                    <tr>\
+                        <td colspan="2"><strong>reg</strong><br />' + (feature.properties['reg'] !== null ? autolinker.link(String(feature.properties['reg']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2"><strong>dept</strong><br />' + (feature.properties['dept'] !== null ? autolinker.link(String(feature.properties['dept']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2"><strong>cod_dept</strong><br />' + (feature.properties['cod_dept'] !== null ? autolinker.link(String(feature.properties['cod_dept']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2"><strong>cav</strong><br />' + (feature.properties['cav'] !== null ? autolinker.link(String(feature.properties['cav']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2"><strong>cod_cav</strong><br />' + (feature.properties['cod_cav'] !== null ? autolinker.link(String(feature.properties['cod_cav']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2"><strong>arr</strong><br />' + (feature.properties['arr'] !== null ? autolinker.link(String(feature.properties['arr']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_Arrondissement_Kaolack_5_0(feature) {
+            switch(String(feature.properties['cav'])) {
+                default:
+                    return {
+                pane: 'pane_Arrondissement_Kaolack_5',
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(59,220,61,1.0)',
+                interactive: true,
+            }
+                    break;
+                case 'AR. KOUMBAL':
+                    return {
+                pane: 'pane_Arrondissement_Kaolack_5',
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(92,229,186,1.0)',
+                interactive: true,
+            }
+                    break;
+                case 'AR. MBADAKHOUNE':
+                    return {
+                pane: 'pane_Arrondissement_Kaolack_5',
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(234,133,129,1.0)',
+                interactive: true,
+            }
+                    break;
+                case 'AR. MEDINA-SABAKH':
+                    return {
+                pane: 'pane_Arrondissement_Kaolack_5',
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(214,164,48,1.0)',
+                interactive: true,
+            }
+                    break;
+                case 'AR. NDIEDIENG':
+                    return {
+                pane: 'pane_Arrondissement_Kaolack_5',
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(115,174,206,1.0)',
+                interactive: true,
+            }
+                    break;
+                case 'AR. NGOTHIE':
+                    return {
+                pane: 'pane_Arrondissement_Kaolack_5',
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(166,21,228,1.0)',
+                interactive: true,
+            }
+                    break;
+                case 'AR. NGUELOU':
+                    return {
+                pane: 'pane_Arrondissement_Kaolack_5',
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(24,17,219,1.0)',
+                interactive: true,
+            }
+                    break;
+                case 'AR. PAOSKOTO':
+                    return {
+                pane: 'pane_Arrondissement_Kaolack_5',
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(220,36,153,1.0)',
+                interactive: true,
+            }
+                    break;
+                case 'AR. WACK-NGOUNA':
+                    return {
+                pane: 'pane_Arrondissement_Kaolack_5',
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(169,204,110,1.0)',
+                interactive: true,
+            }
+                    break;
+            }
+        }
+        map.createPane('pane_Arrondissement_Kaolack_5');
+        map.getPane('pane_Arrondissement_Kaolack_5').style.zIndex = 405;
+        map.getPane('pane_Arrondissement_Kaolack_5').style['mix-blend-mode'] = 'normal';
+        var layer_Arrondissement_Kaolack_5 = new L.geoJson(json_Arrondissement_Kaolack_5, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_Arrondissement_Kaolack_5',
+            layerName: 'layer_Arrondissement_Kaolack_5',
+            pane: 'pane_Arrondissement_Kaolack_5',
+            onEachFeature: pop_Arrondissement_Kaolack_5,
+            style: style_Arrondissement_Kaolack_5_0,
+        });
+        bounds_group.addLayer(layer_Arrondissement_Kaolack_5);
+        map.addLayer(layer_Arrondissement_Kaolack_5);
+        function pop_Route_Kaolack_6(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    for (var i in e.target._eventParents) {
+                        if (typeof e.target._eventParents[i].resetStyle === 'function') {
+                            e.target._eventParents[i].resetStyle(e.target);
+                        }
+                    }
+                    if (typeof layer.closePopup == 'function') {
+                        layer.closePopup();
+                    } else {
+                        layer.eachLayer(function(feature){
+                            feature.closePopup()
+                        });
+                    }
+                },
+                mouseover: highlightFeature,
+            });
+            var popupContent = '<table>\
+                    <tr>\
+                        <td colspan="2"><strong>LONGUEUR</strong><br />' + (feature.properties['LONGUEUR'] !== null ? autolinker.link(String(feature.properties['LONGUEUR']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2"><strong>FONCTION</strong><br />' + (feature.properties['FONCTION'] !== null ? autolinker.link(String(feature.properties['FONCTION']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_Route_Kaolack_6_0(feature) {
+            switch(String(feature.properties['FONCTION'])) {
+                case 'Autres pistes':
+                    return {
+                pane: 'pane_Route_Kaolack_6',
+                opacity: 1,
+                color: 'rgba(71,37,10,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 2.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+                    break;
+                case 'Autres routes':
+                    return {
+                pane: 'pane_Route_Kaolack_6',
+                opacity: 1,
+                color: 'rgba(202,49,58,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 3.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+                    break;
+                case 'Chemin de fer':
+                    return {
+                pane: 'pane_Route_Kaolack_6',
+                opacity: 1,
+                color: 'rgba(84,176,74,1.0)',
+                dashArray: '',
+                lineCap: 'round',
+                lineJoin: 'round',
+                weight: 4.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+                    break;
+                case 'Piste automobile':
+                    return {
+                pane: 'pane_Route_Kaolack_6',
+                opacity: 1,
+                color: 'rgba(109,27,231,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 3.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+                    break;
+                case 'Route principale':
+                    return {
+                pane: 'pane_Route_Kaolack_6',
+                opacity: 1,
+                color: 'rgba(0,0,0,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 4.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+                    break;
+                case 'Route principale à 2 voies':
+                    return {
+                pane: 'pane_Route_Kaolack_6',
+                opacity: 1,
+                color: 'rgba(0,0,0,1.0)',
+                dashArray: '',
+                lineCap: 'round',
+                lineJoin: 'round',
+                weight: 6.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+                    break;
+                default:
+                    return {
+                pane: 'pane_Route_Kaolack_6',
+                opacity: 1,
+                color: 'rgba(62,221,27,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 1.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+                    break;
+            }
+        }
+        map.createPane('pane_Route_Kaolack_6');
+        map.getPane('pane_Route_Kaolack_6').style.zIndex = 406;
+        map.getPane('pane_Route_Kaolack_6').style['mix-blend-mode'] = 'normal';
+        var layer_Route_Kaolack_6 = new L.geoJson(json_Route_Kaolack_6, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_Route_Kaolack_6',
+            layerName: 'layer_Route_Kaolack_6',
+            pane: 'pane_Route_Kaolack_6',
+            onEachFeature: pop_Route_Kaolack_6,
+            style: style_Route_Kaolack_6_0,
+        });
+        bounds_group.addLayer(layer_Route_Kaolack_6);
+        map.addLayer(layer_Route_Kaolack_6);
+        function pop_Localite_Kaolack_7(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    for (var i in e.target._eventParents) {
+                        if (typeof e.target._eventParents[i].resetStyle === 'function') {
+                            e.target._eventParents[i].resetStyle(e.target);
+                        }
+                    }
+                    if (typeof layer.closePopup == 'function') {
+                        layer.closePopup();
+                    } else {
+                        layer.eachLayer(function(feature){
+                            feature.closePopup()
+                        });
+                    }
+                },
+                mouseover: highlightFeature,
+            });
+            var popupContent = '<table>\
+                    <tr>\
+                        <td colspan="2"><strong>NOM</strong><br />' + (feature.properties['NOM'] !== null ? autolinker.link(String(feature.properties['NOM']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2"><strong>NUM_VILLAG</strong><br />' + (feature.properties['NUM_VILLAG'] !== null ? autolinker.link(String(feature.properties['NUM_VILLAG']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_Localite_Kaolack_7_0() {
+            return {
+                pane: 'pane_Localite_Kaolack_7',
+                radius: 5.999999999999998,
+                opacity: 1,
+                color: 'rgba(0,0,0,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 2.0,
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(255,255,255,1.0)',
+                interactive: true,
+            }
+        }
+        map.createPane('pane_Localite_Kaolack_7');
+        map.getPane('pane_Localite_Kaolack_7').style.zIndex = 407;
+        map.getPane('pane_Localite_Kaolack_7').style['mix-blend-mode'] = 'normal';
+        var layer_Localite_Kaolack_7 = new L.geoJson(json_Localite_Kaolack_7, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_Localite_Kaolack_7',
+            layerName: 'layer_Localite_Kaolack_7',
+            pane: 'pane_Localite_Kaolack_7',
+            onEachFeature: pop_Localite_Kaolack_7,
+            pointToLayer: function (feature, latlng) {
+                var context = {
+                    feature: feature,
+                    variables: {}
+                };
+                return L.circleMarker(latlng, style_Localite_Kaolack_7_0(feature));
+            },
+        });
+        bounds_group.addLayer(layer_Localite_Kaolack_7);
+        map.addLayer(layer_Localite_Kaolack_7);
+        function pop_School_Kaolack_8(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    for (var i in e.target._eventParents) {
+                        if (typeof e.target._eventParents[i].resetStyle === 'function') {
+                            e.target._eventParents[i].resetStyle(e.target);
+                        }
+                    }
+                    if (typeof layer.closePopup == 'function') {
+                        layer.closePopup();
+                    } else {
+                        layer.eachLayer(function(feature){
+                            feature.closePopup()
+                        });
+                    }
+                },
+                mouseover: highlightFeature,
+            });
+            var popupContent = '<table>\
+                    <tr>\
+                        <td colspan="2"><strong>Nom</strong><br />' + (feature.properties['Nom'] !== null ? autolinker.link(String(feature.properties['Nom']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        map.createPane('pane_School_Kaolack_8');
+        map.getPane('pane_School_Kaolack_8').style.zIndex = 408;
+        map.getPane('pane_School_Kaolack_8').style['mix-blend-mode'] = 'normal';
+        var layer_School_Kaolack_8 = new L.geoJson(json_School_Kaolack_8, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_School_Kaolack_8',
+            layerName: 'layer_School_Kaolack_8',
+            pane: 'pane_School_Kaolack_8',
+            onEachFeature: pop_School_Kaolack_8,
+            pointToLayer: function (feature, latlng) {
+                return L.marker(latlng, {
+                    icon: L.divIcon({
+                        className: 'school-icon',
+                        html: '<i class="fas fa-school" style="font-size:14px; margin-top:3px;"></i>',
+                        iconSize: [24, 24],
+                        iconAnchor: [12, 12],
+                        popupAnchor: [0, -12]
+                    })
+                });
+            },
+        });
+        bounds_group.addLayer(layer_School_Kaolack_8);
+        map.addLayer(layer_School_Kaolack_8);
+        var photonControl = L.control.photon({
+            url: "https://nominatim.openstreetmap.org/search?format=geojson&addressdetails=1&",
+            placeholder: 'Rechercher une adresse...',
+            position: 'topright', /* Déplacé temporairement avant injection dans navbar */
+            includePosition: true,
+            feedbackLabel: 'Signaler',
+        }).addTo(map);
+        
+        var searchResultLayer;
+        photonControl.on('selected', function(e) {
+            if (searchResultLayer) {
+                map.removeLayer(searchResultLayer);
+            }
+            var feature = e.choice;
+            var label = feature.properties.label || feature.properties.display_name || feature.properties.name;
+            searchResultLayer = L.geoJSON(feature).addTo(map);
+            searchResultLayer.bindPopup(label).openPopup();
+            map.fitBounds(searchResultLayer.getBounds());
+        });
+
+        // --- Définition des Légendes (HTML extrait) ---
+        var layerLegends = {
+            "School_Kaolack_8": '<table><tr><td style="text-align: center;"><img src="legend/School_Kaolack_8_Cemndoffanelaghen0.png" /></td><td>Cem ndoffane laghen</td></tr><tr><td style="text-align: center;"><img src="legend/School_Kaolack_8_CoursPrivèeMboutouSow1.png" /></td><td>Cours Privèe Mboutou Sow</td></tr><tr><td style="text-align: center;"><img src="legend/School_Kaolack_8_DAARAMODERNE2.png" /></td><td>DAARA MODERNE</td></tr><tr><td style="text-align: center;"><img src="legend/School_Kaolack_8_École13.png" /></td><td>École 1</td></tr><tr><td style="text-align: center;"><img src="legend/School_Kaolack_8_École24.png" /></td><td>École 2</td></tr><tr><td style="text-align: center;"><img src="legend/School_Kaolack_8_École35.png" /></td><td>École 3</td></tr><tr><td style="text-align: center;"><img src="legend/School_Kaolack_8_ECOLEELEMENTAIREELINIASSE6.png" /></td><td>ECOLE ELEMENTAIRE EL I NIASSE</td></tr><tr><td style="text-align: center;"><img src="legend/School_Kaolack_8_ÉcoleNdoffane17.png" /></td><td>École Ndoffane 1</td></tr><tr><td style="text-align: center;"><img src="legend/School_Kaolack_8_ÉcoleNguolothie8.png" /></td><td>École Nguolothie</td></tr><tr><td style="text-align: center;"><img src="legend/School_Kaolack_8_ECOLEPRIMAIREDETAIBANIASSENE9.png" /></td><td>ECOLE PRIMAIRE DE TAIBA NIASSENE</td></tr><tr><td style="text-align: center;"><img src="legend/School_Kaolack_8_ÉcoleprimaireThiakhoMadialé10.png" /></td><td>École primaire Thiakho Madialé</td></tr><tr><td style="text-align: center;"><img src="legend/School_Kaolack_8_ECOLEPRIVEE11.png" /></td><td>ECOLE PRIVEE</td></tr><tr><td style="text-align: center;"><img src="legend/School_Kaolack_8_ECOLEPRIVEEARABE12.png" /></td><td>ECOLE PRIVEE ARABE</td></tr><tr><td style="text-align: center;"><img src="legend/School_Kaolack_8_Écoleprivéecatholiquenotredamedelaghem13.png" /></td><td>École privée catholique notre dame de laghem</td></tr><tr><td style="text-align: center;"><img src="legend/School_Kaolack_8_ÉcoleSibassor314.png" /></td><td>École Sibassor 3</td></tr><tr><td style="text-align: center;"><img src="legend/School_Kaolack_8_InstitutDarulHadith15.png" /></td><td>Institut Darul Hadith</td></tr><tr><td style="text-align: center;"><img src="legend/School_Kaolack_8_Lycéedendoffane16.png" /></td><td>Lycée de ndoffane</td></tr><tr><td style="text-align: center;"><img src="legend/School_Kaolack_8_LYCEEDETAIBANIASSENE17.png" /></td><td>LYCEE DE TAIBA NIASSENE</td></tr><tr><td style="text-align: center;"><img src="legend/School_Kaolack_8_LycéeMixedeSibassor18.png" /></td><td>Lycée Mixe de Sibassor</td></tr><tr><td style="text-align: center;"><img src="legend/School_Kaolack_8_19.png" /></td><td>Autre</td></tr></table>',
+            "Localite_Kaolack_7": '<img src="legend/Localite_Kaolack_7.png" /> Localités',
+            "Route_Kaolack_6": '<table><tr><td style="text-align: center;"><img src="legend/Route_Kaolack_6_Autrespistes0.png" /></td><td>Autres pistes</td></tr><tr><td style="text-align: center;"><img src="legend/Route_Kaolack_6_Autresroutes1.png" /></td><td>Autres routes</td></tr><tr><td style="text-align: center;"><img src="legend/Route_Kaolack_6_Chemindefer2.png" /></td><td>Chemin de fer</td></tr><tr><td style="text-align: center;"><img src="legend/Route_Kaolack_6_Pisteautomobile3.png" /></td><td>Piste automobile</td></tr><tr><td style="text-align: center;"><img src="legend/Route_Kaolack_6_Routeprincipale4.png" /></td><td>Route principale</td></tr><tr><td style="text-align: center;"><img src="legend/Route_Kaolack_6_Routeprincipaleà2voies5.png" /></td><td>Route principale à 2 voies</td></tr></table>',
+            "Arrondissement_Kaolack_5": '<table><tr><td style="text-align: center;"><img src="legend/Arrondissement_Kaolack_5_ARKOUMBAL1.png" /></td><td>AR. KOUMBAL</td></tr><tr><td style="text-align: center;"><img src="legend/Arrondissement_Kaolack_5_ARMBADAKHOUNE2.png" /></td><td>AR. MBADAKHOUNE</td></tr><tr><td style="text-align: center;"><img src="legend/Arrondissement_Kaolack_5_ARMEDINASABAKH3.png" /></td><td>AR. MEDINA-SABAKH</td></tr><tr><td style="text-align: center;"><img src="legend/Arrondissement_Kaolack_5_ARNDIEDIENG4.png" /></td><td>AR. NDIEDIENG</td></tr><tr><td style="text-align: center;"><img src="legend/Arrondissement_Kaolack_5_ARNGOTHIE5.png" /></td><td>AR. NGOTHIE</td></tr><tr><td style="text-align: center;"><img src="legend/Arrondissement_Kaolack_5_ARNGUELOU6.png" /></td><td>AR. NGUELOU</td></tr><tr><td style="text-align: center;"><img src="legend/Arrondissement_Kaolack_5_ARPAOSKOTO7.png" /></td><td>AR. PAOSKOTO</td></tr><tr><td style="text-align: center;"><img src="legend/Arrondissement_Kaolack_5_ARWACKNGOUNA8.png" /></td><td>AR. WACK-NGOUNA</td></tr></table>',
+            "Departement_Kaolack_4": '<table><tr><td style="text-align: center;"><img src="legend/Departement_Kaolack_4_GUINGUINEO0.png" /></td><td>GUINGUINEO</td></tr><tr><td style="text-align: center;"><img src="legend/Departement_Kaolack_4_KAOLACK1.png" /></td><td>KAOLACK</td></tr><tr><td style="text-align: center;"><img src="legend/Departement_Kaolack_4_NIORO2.png" /></td><td>NIORO</td></tr></table>',
+            "Region_Kaolack_3": '<img src="legend/Region_Kaolack_3.png" /> Région Kaolack'
+        };
+
+        // --- Catalogue simplifié (sans légende) ---
+        var overlaysTree = [
+            {label: '<i class="fas fa-school"></i> Écoles', layer: layer_School_Kaolack_8},
+            {label: '<i class="fas fa-map-marker-alt"></i> Localités', layer: layer_Localite_Kaolack_7},
+            {label: '<i class="fas fa-road"></i> Routes', layer: layer_Route_Kaolack_6},
+            {label: '<i class="fas fa-vector-square"></i> Arrondissements', layer: layer_Arrondissement_Kaolack_5},
+            {label: '<i class="fas fa-vector-square"></i> Départements', layer: layer_Departement_Kaolack_4},
+            {label: '<i class="fas fa-vector-square"></i> Région', layer: layer_Region_Kaolack_3},]
+        var lay = L.control.layers.tree(null, overlaysTree,{
+            //namedToggle: true,
+            //selectorBack: false,
+            //closedSymbol: '&#8862; &#x1f5c0;',
+            //openedSymbol: '&#8863; &#x1f5c1;',
+            //collapseAll: 'Collapse all',
+            //expandAll: 'Expand all',
+            collapsed: true,
+        });
+        lay.addTo(map);
+        
+        // Déplacement du contrôle des couches dans le panneau latéral gauche
+        var layersControlContainer = lay.getContainer();
+        document.getElementById('layers-container').appendChild(layersControlContainer);
+        lay.expand(); // Toujours déplié dans le panneau
+
+        setBounds();
+        var i = 0;
+        layer_Departement_Kaolack_4.eachLayer(function(layer) {
+            var context = {
+                feature: layer.feature,
+                variables: {}
+            };
+            layer.bindTooltip((layer.feature.properties['dept'] !== null?String('<div style="color: #323232; font-size: 10pt; font-weight: bold; font-family: \'Times New Roman\', sans-serif;">' + layer.feature.properties['dept']) + '</div>':''), {permanent: true, offset: [-0, -16], className: 'css_Departement_Kaolack_4'});
+            labels.push(layer);
+            totalMarkers += 1;
+              layer.added = true;
+              addLabel(layer, i);
+              i++;
+        });
+        var i = 0;
+        layer_Arrondissement_Kaolack_5.eachLayer(function(layer) {
+            var context = {
+                feature: layer.feature,
+                variables: {}
+            };
+            layer.bindTooltip((layer.feature.properties['cav'] !== null?String('<div style="color: #323232; font-size: 10pt; font-weight: bold; font-family: \'Times New Roman\', sans-serif;">' + layer.feature.properties['cav']) + '</div>':''), {permanent: true, offset: [-0, -16], className: 'css_Arrondissement_Kaolack_5'});
+            labels.push(layer);
+            totalMarkers += 1;
+              layer.added = true;
+              addLabel(layer, i);
+              i++;
+        });
+        map.addControl(new L.Control.Search({
+            layer: layer_Localite_Kaolack_7,
+            initial: false,
+            hideMarkerOnCollapse: true,
+            propertyName: 'NOM'}));
+        resetLabels([layer_Departement_Kaolack_4,layer_Arrondissement_Kaolack_5]);
+        map.on("zoomend", function(){
+            resetLabels([layer_Departement_Kaolack_4,layer_Arrondissement_Kaolack_5]);
+        });
+        map.on("layeradd", function(){
+            resetLabels([layer_Departement_Kaolack_4,layer_Arrondissement_Kaolack_5]);
+        });
+        map.on("layerremove", function(){
+            resetLabels([layer_Departement_Kaolack_4,layer_Arrondissement_Kaolack_5]);
+        });
+
+        // --- MiniMap Logic ---
+        var miniMapLayer = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {minZoom: 0, maxZoom: 13});
+        var miniMap = new L.Control.MiniMap(miniMapLayer, { toggleDisplay: true, minimized: false, position: 'bottomleft' }).addTo(map);
+
+        function updateMinimap() {
+            var minimapUrl;
+            var minimapOptions = { minZoom: 0, maxZoom: 13 };
+
+            if (map.hasLayer(layer_OpenStreetMap_2)) {
+                minimapUrl = layer_OpenStreetMap_2._url;
+            } else if (map.hasLayer(layer_GoogleSatelliteHybrid_1)) {
+                minimapUrl = layer_GoogleSatelliteHybrid_1._url;
+            } else if (map.hasLayer(layer_GoogleMaps_0)) {
+                minimapUrl = layer_GoogleMaps_0._url;
+            }
+
+            if (minimapUrl) {
+                miniMap.changeLayer(new L.TileLayer(minimapUrl, minimapOptions));
+            }
+        }
+
+        map.on('layeradd layerremove', function (e) {
+            if (e.layer === layer_GoogleMaps_0 || e.layer === layer_GoogleSatelliteHybrid_1 || e.layer === layer_OpenStreetMap_2) {
+                setTimeout(updateMinimap, 10);
+            }
+        });
+        updateMinimap();
+
+        // --- Filter Control Logic ---
+        var filterControl = L.control({position: 'topright'});
+        filterControl.onAdd = function (map) {
+            var div = L.DomUtil.create('div', 'filter-control leaflet-bar');
+            div.innerHTML = '<div class="bg-white p-2 rounded shadow-sm border">' +
+                            '<label for="schoolFilter" class="form-label fw-bold mb-1 small"><i class="fas fa-filter me-1 text-secondary"></i>Filtrer les écoles:</label>' +
+                            '<select id="schoolFilter" class="form-select form-select-sm">' +
+                            '<option value="all">Toutes</option>' +
+                            '</select>' +
+                            '</div>';
+            L.DomEvent.disableClickPropagation(div);
+            return div;
+        };
+        filterControl.addTo(map);
+
+        // Populate Dropdown
+        var schoolSelect = document.getElementById('schoolFilter');
+        var uniqueSchools = [];
+        json_School_Kaolack_8.features.forEach(function(f){
+            var n = f.properties['Nom'];
+            if(n && !uniqueSchools.includes(n)) uniqueSchools.push(n);
+        });
+        uniqueSchools.sort().forEach(function(n){
+            var opt = document.createElement('option');
+            opt.value = n;
+            opt.innerHTML = n;
+            schoolSelect.appendChild(opt);
+        });
+
+        // Filter Event
+        schoolSelect.addEventListener('change', function(){
+            var val = this.value;
+            layer_School_Kaolack_8.clearLayers();
+            var data = (val === 'all') ? json_School_Kaolack_8 : { type: 'FeatureCollection', features: json_School_Kaolack_8.features.filter(function(f){ return f.properties['Nom'] === val; }) };
+            layer_School_Kaolack_8.addData(data);
+        });
+
+        // --- Fonctions Modernes ---
+
+        // 1. Gestion des fonds de carte (Right Panel)
+        function switchBasemap(type) {
+            map.removeLayer(layer_OpenStreetMap_2);
+            map.removeLayer(layer_GoogleMaps_0);
+            map.removeLayer(layer_GoogleSatelliteHybrid_1);
+            
+            if (type === 'osm') map.addLayer(layer_OpenStreetMap_2);
+            if (type === 'google') map.addLayer(layer_GoogleMaps_0);
+            if (type === 'hybrid') map.addLayer(layer_GoogleSatelliteHybrid_1);
+        }
+
+        // 2. Outil de mesure
+        function toggleMeasure() {
+            var measureBtn = document.querySelector('.leaflet-control-measure-toggle');
+            if(measureBtn) measureBtn.click();
+        }
+
+
+        // 4. Coordonnées dynamiques
+        map.on('mousemove', function(e) {
+            document.getElementById('mouse-coords').innerHTML = 
+                '<i class="fas fa-location-arrow me-1"></i>Lat: ' + e.latlng.lat.toFixed(4) + ', Lon: ' + e.latlng.lng.toFixed(4);
+        });
+
+        // 5. Echelle dynamique
+        L.control.scale({position: 'bottomright', maxWidth: 150}).addTo(map);
+        // Déplacer l'échelle dans le footer
+        var scaleContainer = document.querySelector('.leaflet-control-scale');
+        if(scaleContainer) {
+            document.getElementById('map-scale').appendChild(scaleContainer);
+        }
+
+        // 6. Déplacer la recherche dans la navbar
+        var searchContainer = photonControl.getContainer();
+        document.getElementById('navbar-search-container').appendChild(searchContainer);
+        // Ajuster le style pour la navbar
+        searchContainer.style.margin = "0";
+        searchContainer.style.boxShadow = "none";
+
+        // --- NOUVELLES FONCTIONNALITÉS ---
+
+        // A. Gestion de la Légende Dynamique
+        function updateLegend() {
+            var container = document.getElementById('legend-content');
+            container.innerHTML = '';
+            var activeLayers = [];
+            
+            // Vérifier quelles couches sont actives
+            if(map.hasLayer(layer_School_Kaolack_8)) activeLayers.push("School_Kaolack_8");
+            if(map.hasLayer(layer_Localite_Kaolack_7)) activeLayers.push("Localite_Kaolack_7");
+            if(map.hasLayer(layer_Route_Kaolack_6)) activeLayers.push("Route_Kaolack_6");
+            if(map.hasLayer(layer_Arrondissement_Kaolack_5)) activeLayers.push("Arrondissement_Kaolack_5");
+            if(map.hasLayer(layer_Departement_Kaolack_4)) activeLayers.push("Departement_Kaolack_4");
+            if(map.hasLayer(layer_Region_Kaolack_3)) activeLayers.push("Region_Kaolack_3");
+
+            if(activeLayers.length === 0) {
+                container.innerHTML = 'Aucune couche active.';
+                return;
+            }
+
+            activeLayers.forEach(function(layerId) {
+                var div = document.createElement('div');
+                div.className = 'mb-3';
+                div.innerHTML = '<strong>' + layerId.replace(/_/g, ' ') + '</strong><br>' + layerLegends[layerId];
+                container.appendChild(div);
+            });
+        }
+        map.on('overlayadd overlayremove', updateLegend);
+        updateLegend(); // Init
+
+        // B. Requêtes Attributaires (Remplissage des Selects)
+        function populateAttributeQueries() {
+            // Départements
+            var deptSelect = document.getElementById('query-dept');
+            var depts = new Set();
+            json_Departement_Kaolack_4.features.forEach(f => depts.add(f.properties['dept']));
+            depts.forEach(d => {
+                var opt = document.createElement('option');
+                opt.value = d; opt.innerHTML = d;
+                deptSelect.appendChild(opt);
+            });
+
+            // Arrondissements
+            var arrSelect = document.getElementById('query-arr');
+            var arrs = new Set();
+            json_Arrondissement_Kaolack_5.features.forEach(f => arrs.add(f.properties['arr']));
+            arrs.forEach(a => {
+                var opt = document.createElement('option');
+                opt.value = a; opt.innerHTML = a;
+                arrSelect.appendChild(opt);
+            });
+
+            // Localités
+            var locSelect = document.getElementById('query-loc');
+            var locs = [];
+            json_Localite_Kaolack_7.features.forEach(f => locs.push(f.properties['NOM']));
+            locs.sort().forEach(l => {
+                var opt = document.createElement('option');
+                opt.value = l; opt.innerHTML = l;
+                locSelect.appendChild(opt);
+            });
+        }
+        populateAttributeQueries();
+
+        // Fonction de zoom attributaire
+        window.zoomToFeature = function(value, type) {
+            var layer, prop;
+            if(type === 'Departement') { layer = layer_Departement_Kaolack_4; prop = 'dept'; }
+            if(type === 'Arrondissement') { layer = layer_Arrondissement_Kaolack_5; prop = 'arr'; }
+            if(type === 'Localite') { layer = layer_Localite_Kaolack_7; prop = 'NOM'; }
+
+            if(layer && value) {
+                layer.eachLayer(function(l) {
+                    if(l.feature.properties[prop] == value) {
+                        map.fitBounds(l.getBounds());
+                        l.openPopup();
+                    }
+                });
+            }
+        };
+
+        // C. Requête Spatiale (Sélection par Rectangle)
+        window.enableSpatialQuery = function() {
+            alert("Maintenez la touche MAJ (Shift) et dessinez un rectangle sur la carte pour sélectionner des éléments.");
+            map.boxZoom.enable();
+            
+            map.once('boxzoomend', function(e) {
+                var bounds = e.boxZoomBounds;
+                var results = "";
+                var count = 0;
+                var countSchools = 0;
+                var countLocalities = 0;
+
+                // Vérifier dans les écoles
+                layer_School_Kaolack_8.eachLayer(function(l) {
+                    if(bounds.contains(l.getLatLng())) {
+                        results += "<li><b>Ecole:</b> " + (l.feature.properties['Nom'] || 'Inconnue') + "</li>";
+                        count++;
+                        countSchools++;
+                    }
+                });
+
+                // Vérifier dans les localités
+                layer_Localite_Kaolack_7.eachLayer(function(l) {
+                    if(bounds.contains(l.getLatLng())) {
+                        results += "<li><b>Localité:</b> " + l.feature.properties['NOM'] + "</li>";
+                        count++;
+                        countLocalities++;
+                    }
+                });
+
+                var modalBody = document.getElementById('spatial-result-body');
+                modalBody.innerHTML = count > 0 ? "<ul>" + results + "</ul>" : "Aucun élément trouvé dans cette zone.";
+                var resultModal = new bootstrap.Modal(document.getElementById('spatialResultModal'));
+                resultModal.show();
+                
+                // Mise à jour du graphique et ouverture du panneau
+                updateChart(countSchools, countLocalities);
+                var offcanvasRight = new bootstrap.Offcanvas(document.getElementById('offcanvasRight'));
+                offcanvasRight.show();
+            });
+        };
+
+        // D. Téléchargement
+        var layersData = [
+            { name: "Région", data: json_Region_Kaolack_3, filename: "region_kaolack" },
+            { name: "Départements", data: json_Departement_Kaolack_4, filename: "departements_kaolack" },
+            { name: "Arrondissements", data: json_Arrondissement_Kaolack_5, filename: "arrondissements_kaolack" },
+            { name: "Routes", data: json_Route_Kaolack_6, filename: "routes_kaolack" },
+            { name: "Localités", data: json_Localite_Kaolack_7, filename: "localites_kaolack" },
+            { name: "Écoles", data: json_School_Kaolack_8, filename: "ecoles_kaolack" }
+        ];
+
+        var dlBody = document.getElementById('download-table-body');
+        layersData.forEach(function(l) {
+            var row = `<tr>
+                <td>${l.name}</td>
+                <td><a href="#" onclick="downloadData('${l.filename}', 'json')" class="btn btn-sm btn-outline-primary">JSON</a></td>
+                <td><a href="#" onclick="downloadData('${l.filename}', 'csv')" class="btn btn-sm btn-outline-success">CSV</a></td>
+            </tr>`;
+            dlBody.innerHTML += row;
+        });
+
+        window.downloadData = function(filename, format) {
+            var data = layersData.find(l => l.filename === filename).data;
+            var content = (format === 'json') ? 
+                "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data)) : 
+                "data:text/csv;charset=utf-8," + encodeURIComponent(geojsonToCSV(data)); // Fonction CSV simple à implémenter si besoin, ici placeholder
+            
+            var link = document.createElement('a');
+            link.setAttribute("href", content);
+            link.setAttribute("download", filename + "." + format);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        };
+
+        // Helper simple GeoJSON -> CSV
+        function geojsonToCSV(geojson) {
+            if(!geojson.features.length) return "";
+            var props = Object.keys(geojson.features[0].properties);
+            var csv = props.join(",") + "\n";
+            geojson.features.forEach(f => {
+                var row = props.map(p => '"' + (f.properties[p] || "").toString().replace(/"/g, '""') + '"');
+                csv += row.join(",") + "\n";
+            });
+            return csv;
+        }
+
+        // --- Graphique Statistique ---
+        var ctx = document.getElementById('statsChart').getContext('2d');
+        var myChart;
+
+        function updateChart(schools, localities) {
+            if (myChart) {
+                myChart.destroy();
+            }
+            myChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Ecoles', 'Localités'],
+                    datasets: [{
+                        label: 'Nombre d\'éléments',
+                        data: [schools, localities],
+                        backgroundColor: ['rgba(54, 162, 235, 0.6)', 'rgba(255, 99, 132, 0.6)'],
+                        borderColor: ['rgba(54, 162, 235, 1)', 'rgba(255, 99, 132, 1)'],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: { beginAtZero: true, ticks: { stepSize: 1 } }
+                    }
+                }
+            });
+        }
+
+        // --- Statistiques Globales ---
+        var roadsChartInstance = null;
+        var infraChartInstance = null;
+
+        window.showGlobalStats = function() {
+            var statsModal = new bootstrap.Modal(document.getElementById('globalStatsModal'));
+            statsModal.show();
+
+            // 1. Calcul des stats Routes
+            var roadTypes = {};
+            json_Route_Kaolack_6.features.forEach(function(f) {
+                var type = f.properties['FONCTION'] || 'Inconnu';
+                roadTypes[type] = (roadTypes[type] || 0) + 1;
+            });
+
+            // 2. Calcul des stats Infrastructures
+            var nbEcoles = json_School_Kaolack_8.features.length;
+            var nbLocalites = json_Localite_Kaolack_7.features.length;
+            var nbArrondissements = json_Arrondissement_Kaolack_5.features.length;
+
+            // Mise à jour du résumé texte
+            document.getElementById('stats-summary').innerHTML = 
+                `Total : ${nbEcoles} Écoles, ${nbLocalites} Localités et ${json_Route_Kaolack_6.features.length} Tronçons de route répertoriés.`;
+
+            // 3. Rendu Graphique Routes (Pie)
+            var ctxRoads = document.getElementById('roadsChart').getContext('2d');
+            if (roadsChartInstance) roadsChartInstance.destroy();
+            
+            roadsChartInstance = new Chart(ctxRoads, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(roadTypes),
+                    datasets: [{
+                        data: Object.values(roadTypes),
+                        backgroundColor: ['#ff6384', '#36a2eb', '#ffce56', '#4bc0c0', '#9966ff', '#c9cbcf'],
+                        borderWidth: 1
+                    }]
+                },
+                options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } } } }
+            });
+
+            // 4. Rendu Graphique Infra (Bar)
+            var ctxInfra = document.getElementById('infraChart').getContext('2d');
+            if (infraChartInstance) infraChartInstance.destroy();
+
+            infraChartInstance = new Chart(ctxInfra, {
+                type: 'bar',
+                data: {
+                    labels: ['Écoles', 'Localités', 'Arrondissements'],
+                    datasets: [{
+                        label: 'Nombre d\'unités',
+                        data: [nbEcoles, nbLocalites, nbArrondissements],
+                        backgroundColor: ['rgba(54, 162, 235, 0.7)', 'rgba(75, 192, 192, 0.7)', 'rgba(153, 102, 255, 0.7)'],
+                        borderColor: ['rgb(54, 162, 235)', 'rgb(75, 192, 192)', 'rgb(153, 102, 255)'],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: { y: { beginAtZero: true } },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        };
+
+        </script>
+        <!-- Bootstrap Bundle with Popper -->
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    </body>
+</html>
