@@ -12,7 +12,7 @@
   <path d="M256 32 C150 32 64 118 64 224 C64 340 256 480 256 480 C256 480 448 340 448 224 C448 118 362 32 256 32 Z" fill="url(#grad)" filter="url(#shadow)"/>
   <circle cx="256" cy="224" r="115" fill="white"/>
   <g transform="translate(0, -10)">
-    <path d="M256 154 L186 189 L256 224 L326 189 Z" fill="#ffc107"/>
+    <path d="M256 154 L186 189 L256 224 L326 189 Z" fill="#f1b430"/>
     <path d="M186 209 L170 217 L256 260 L342 217 L326 209 L256 244 Z" fill="#0d6efd"/>
     <path d="M186 249 L170 257 L256 300 L342 257 L326 249 L256 284 Z" fill="#198754"/>
   </g>

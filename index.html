@@ -1129,7 +1129,7 @@
               addLabel(layer, i);
               i++;
         });
-        var i = 0;
+        /* var i = 0;
         layer_Arrondissement_Kaolack_5.eachLayer(function(layer) {
             var context = {
                 feature: layer.feature,
@@ -1141,21 +1141,21 @@
               layer.added = true;
               addLabel(layer, i);
               i++;
-        });
+        }); */
         map.addControl(new L.Control.Search({
             layer: layer_Localite_Kaolack_7,
             initial: false,
             hideMarkerOnCollapse: true,
             propertyName: 'NOM'}));
-        resetLabels([layer_Departement_Kaolack_4,layer_Arrondissement_Kaolack_5]);
+        resetLabels([layer_Departement_Kaolack_4]);
         map.on("zoomend", function(){
-            resetLabels([layer_Departement_Kaolack_4,layer_Arrondissement_Kaolack_5]);
+            resetLabels([layer_Departement_Kaolack_4]);
         });
         map.on("layeradd", function(){
-            resetLabels([layer_Departement_Kaolack_4,layer_Arrondissement_Kaolack_5]);
+            resetLabels([layer_Departement_Kaolack_4]);
         });
         map.on("layerremove", function(){
-            resetLabels([layer_Departement_Kaolack_4,layer_Arrondissement_Kaolack_5]);
+            resetLabels([layer_Departement_Kaolack_4]);
         });
 
         // --- MiniMap Logic ---
