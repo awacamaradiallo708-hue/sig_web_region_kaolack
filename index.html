@@ -793,7 +793,7 @@
             style: style_Arrondissement_Kaolack_5_0,
         });
         bounds_group.addLayer(layer_Arrondissement_Kaolack_5);
-        map.addLayer(layer_Arrondissement_Kaolack_5);
+        // map.addLayer(layer_Arrondissement_Kaolack_5);
         function pop_Route_Kaolack_6(feature, layer) {
             layer.on({
                 mouseout: function(e) {
@@ -1004,7 +1004,7 @@
             },
         });
         bounds_group.addLayer(layer_Localite_Kaolack_7);
-        map.addLayer(layer_Localite_Kaolack_7);
+        // map.addLayer(layer_Localite_Kaolack_7);
         function pop_School_Kaolack_8(feature, layer) {
             layer.on({
                 mouseout: function(e) {
@@ -1545,6 +1545,7 @@
         });
 
         installBtn.addEventListener('click', (e) => {
+            e.preventDefault();
             installContainer.style.display = 'none';
             deferredPrompt.prompt();
             deferredPrompt.userChoice.then((choiceResult) => {
