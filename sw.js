@@ -1,5 +1,5 @@
 // c:\xampp\tomcat\webapps\cartographie_web_region_kaolack\sw.js
-const CACHE_NAME = 'sig-kaolack-v1';
+const CACHE_NAME = 'sig-kaolack-v2';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
