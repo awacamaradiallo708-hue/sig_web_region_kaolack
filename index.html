@@ -1329,6 +1329,40 @@
         }
         populateAttributeQueries();
 
+        // Fonction pour faire clignoter une entité (Highlight effect)
+        function blinkFeature(featureLayer, parentLayer) {
+            var count = 0;
+            var maxBlinks = 8; // 4 cycles allumé/éteint
+            var interval = setInterval(function() {
+                if (count >= maxBlinks) {
+                    clearInterval(interval);
+                    if (parentLayer && typeof parentLayer.resetStyle === 'function') {
+                        parentLayer.resetStyle(featureLayer);
+                    }
+                    return;
+                }
+                
+                if (count % 2 === 0) {
+                    // Style temporaire (Rouge clignotant)
+                    featureLayer.setStyle({
+                        weight: 5,
+                        color: '#FF0000',
+                        opacity: 1,
+                        fillColor: '#FF0000',
+                        fillOpacity: 0.6,
+                        radius: 12 // Pour les points (Localités)
+                    });
+                    if (featureLayer.bringToFront) featureLayer.bringToFront();
+                } else {
+                    // Retour au style normal
+                    if (parentLayer && typeof parentLayer.resetStyle === 'function') {
+                        parentLayer.resetStyle(featureLayer);
+                    }
+                }
+                count++;
+            }, 300); // Vitesse du clignotement (ms)
+        }
+
         // Fonction de zoom attributaire
         window.zoomToFeature = function(value, type) {
             var layer, prop;
@@ -1352,6 +1386,7 @@
                             map.setView(l.getLatLng(), 15);
                         }
                         l.openPopup();
+                        blinkFeature(l, layer); // Déclenche le clignotement
                     }
                 });
             }
