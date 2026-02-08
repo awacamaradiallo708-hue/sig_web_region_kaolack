@@ -1426,34 +1426,108 @@
         function performSpatialQuery(bounds) {
             var results = "";
             var count = 0;
-            var countSchools = 0;
-            var countLocalities = 0;
+            
+            // Listes pour stocker les résultats
+            var schools = [];
+            var localities = [];
+            var roadFunctions = new Set();
+            var arrondissements = new Set();
+            var departements = new Set();
 
-            // Vérifier dans les écoles
+            // 1. Ecoles (Points)
             layer_School_Kaolack_8.eachLayer(function(l) {
                 if(bounds.contains(l.getLatLng())) {
-                    results += "<li><b>Ecole:</b> " + (l.feature.properties['Nom'] || 'Inconnue') + "</li>";
-                    count++;
-                    countSchools++;
+                    schools.push(l.feature.properties['Nom'] || 'Inconnue');
                 }
             });
 
-            // Vérifier dans les localités
+            // 2. Localités (Points)
             layer_Localite_Kaolack_7.eachLayer(function(l) {
                 if(bounds.contains(l.getLatLng())) {
-                    results += "<li><b>Localité:</b> " + l.feature.properties['NOM'] + "</li>";
-                    count++;
-                    countLocalities++;
+                    localities.push(l.feature.properties['NOM']);
                 }
             });
 
+            // 3. Routes (Lignes) - Intersection
+            layer_Route_Kaolack_6.eachLayer(function(l) {
+                if(l.getBounds && bounds.intersects(l.getBounds())) {
+                    if(l.feature.properties['FONCTION']) {
+                        roadFunctions.add(l.feature.properties['FONCTION']);
+                    }
+                }
+            });
+
+            // 4. Arrondissements (Polygones) - Intersection
+            layer_Arrondissement_Kaolack_5.eachLayer(function(l) {
+                if(l.getBounds && bounds.intersects(l.getBounds())) {
+                    if(l.feature.properties['arr']) {
+                        arrondissements.add(l.feature.properties['arr']);
+                    }
+                }
+            });
+
+            // 5. Départements (Polygones) - Intersection
+            layer_Departement_Kaolack_4.eachLayer(function(l) {
+                if(l.getBounds && bounds.intersects(l.getBounds())) {
+                    if(l.feature.properties['dept']) {
+                        departements.add(l.feature.properties['dept']);
+                    }
+                }
+            });
+
+            // Construction du HTML
+            if (departements.size > 0) {
+                results += "<h6 class='text-primary mt-2'><i class='fas fa-map'></i> Départements (" + departements.size + ")</h6><ul class='list-unstyled ms-3 mb-1'>";
+                departements.forEach(d => results += "<li>" + d + "</li>");
+                results += "</ul>";
+                count += departements.size;
+            }
+
+            if (arrondissements.size > 0) {
+                results += "<h6 class='text-primary mt-2'><i class='fas fa-map-marker-alt'></i> Arrondissements (" + arrondissements.size + ")</h6><ul class='list-unstyled ms-3 mb-1'>";
+                arrondissements.forEach(a => results += "<li>" + a + "</li>");
+                results += "</ul>";
+                count += arrondissements.size;
+            }
+
+            if (localities.length > 0) {
+                results += "<h6 class='text-primary mt-2'><i class='fas fa-city'></i> Localités (" + localities.length + ")</h6><ul class='list-unstyled ms-3 mb-1'>";
+                if(localities.length > 10) {
+                    localities.slice(0, 10).forEach(l => results += "<li>" + l + "</li>");
+                    results += "<li><em>... et " + (localities.length - 10) + " autres.</em></li>";
+                } else {
+                    localities.forEach(l => results += "<li>" + l + "</li>");
+                }
+                results += "</ul>";
+                count += localities.length;
+            }
+
+            if (schools.length > 0) {
+                results += "<h6 class='text-primary mt-2'><i class='fas fa-school'></i> Écoles (" + schools.length + ")</h6><ul class='list-unstyled ms-3 mb-1'>";
+                if(schools.length > 10) {
+                    schools.slice(0, 10).forEach(s => results += "<li>" + s + "</li>");
+                    results += "<li><em>... et " + (schools.length - 10) + " autres.</em></li>";
+                } else {
+                    schools.forEach(s => results += "<li>" + s + "</li>");
+                }
+                results += "</ul>";
+                count += schools.length;
+            }
+
+            if (roadFunctions.size > 0) {
+                results += "<h6 class='text-primary mt-2'><i class='fas fa-road'></i> Types de routes (" + roadFunctions.size + ")</h6><ul class='list-unstyled ms-3 mb-1'>";
+                roadFunctions.forEach(r => results += "<li>" + r + "</li>");
+                results += "</ul>";
+                count += roadFunctions.size;
+            }
+
             var modalBody = document.getElementById('spatial-result-body');
-            modalBody.innerHTML = count > 0 ? "<ul class='list-unstyled'>" + results + "</ul>" : "Aucun élément trouvé dans cette zone.";
+            modalBody.innerHTML = count > 0 ? results : "Aucun élément trouvé dans cette zone.";
             var resultModal = new bootstrap.Modal(document.getElementById('spatialResultModal'));
             resultModal.show();
             
             // Mise à jour du graphique et ouverture du panneau
-            updateChart(countSchools, countLocalities);
+            updateChart(schools.length, localities.length);
             var offcanvasRight = new bootstrap.Offcanvas(document.getElementById('offcanvasRight'));
             offcanvasRight.show();
         }
