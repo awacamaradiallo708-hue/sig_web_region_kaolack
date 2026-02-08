@@ -1379,11 +1379,14 @@
                 layer.eachLayer(function(l) {
                     if(l.feature.properties[prop] == value) {
                         // Amélioration : Gestion du zoom pour les points (Localités)
-                        if (typeof l.getBounds === 'function' && l.getBounds().isValid() && !l.getBounds().getNorthEast().equals(l.getBounds().getSouthWest())) {
-                            map.fitBounds(l.getBounds());
+                        // Correction robuste pour éviter l'erreur "l.getBounds is not a function"
+                        var bounds = (typeof l.getBounds === 'function') ? l.getBounds() : null;
+                        
+                        if (bounds && bounds.isValid && bounds.isValid() && !bounds.getNorthEast().equals(bounds.getSouthWest())) {
+                            map.fitBounds(bounds);
                         } else {
                             // Pour les points ou bounds invalides/nulls, on utilise setView avec un zoom raisonnable
-                            map.setView(l.getLatLng(), 15);
+                            if (l.getLatLng) map.setView(l.getLatLng(), 15);
                         }
                         l.openPopup();
                         blinkFeature(l, layer); // Déclenche le clignotement
