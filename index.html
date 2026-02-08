@@ -1160,7 +1160,7 @@
 
         // --- MiniMap Logic ---
         var miniMapLayer = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {minZoom: 0, maxZoom: 13});
-        var miniMap = new L.Control.MiniMap(miniMapLayer, { toggleDisplay: true, minimized: false, position: 'bottomleft' }).addTo(map);
+        var miniMap = new L.Control.MiniMap(miniMapLayer, { toggleDisplay: true, minimized: false, position: 'bottomright' }).addTo(map);
 
         function updateMinimap() {
             var minimapUrl;
@@ -1337,55 +1337,129 @@
             if(type === 'Localite') { layer = layer_Localite_Kaolack_7; prop = 'NOM'; }
 
             if(layer && value) {
+                // Amélioration : S'assurer que la couche est visible
+                if (!map.hasLayer(layer)) {
+                    map.addLayer(layer);
+                }
+
                 layer.eachLayer(function(l) {
                     if(l.feature.properties[prop] == value) {
-                        map.fitBounds(l.getBounds());
+                        // Amélioration : Gestion du zoom pour les points (Localités)
+                        if (l.getBounds && l.getBounds().isValid() && !l.getBounds().getNorthEast().equals(l.getBounds().getSouthWest())) {
+                            map.fitBounds(l.getBounds());
+                        } else {
+                            // Pour les points ou bounds invalides/nulls, on utilise setView avec un zoom raisonnable
+                            map.setView(l.getLatLng(), 15);
+                        }
                         l.openPopup();
                     }
                 });
             }
         };
 
-        // C. Requête Spatiale (Sélection par Rectangle)
-        window.enableSpatialQuery = function() {
-            alert("Maintenez la touche MAJ (Shift) et dessinez un rectangle sur la carte pour sélectionner des éléments.");
-            map.boxZoom.enable();
+        // C. Requête Spatiale (Sélection par Rectangle) - Version Mobile Friendly
+        var spatialSelectionMode = false;
+        var selectionRectangle = null;
+        var startLatLng = null;
+
+        function toggleSpatialQueryMode(enable) {
+            spatialSelectionMode = enable;
+            var mapContainer = document.getElementById('map');
             
-            map.once('boxzoomend', function(e) {
-                var bounds = e.boxZoomBounds;
-                var results = "";
-                var count = 0;
-                var countSchools = 0;
-                var countLocalities = 0;
-
-                // Vérifier dans les écoles
-                layer_School_Kaolack_8.eachLayer(function(l) {
-                    if(bounds.contains(l.getLatLng())) {
-                        results += "<li><b>Ecole:</b> " + (l.feature.properties['Nom'] || 'Inconnue') + "</li>";
-                        count++;
-                        countSchools++;
-                    }
-                });
-
-                // Vérifier dans les localités
-                layer_Localite_Kaolack_7.eachLayer(function(l) {
-                    if(bounds.contains(l.getLatLng())) {
-                        results += "<li><b>Localité:</b> " + l.feature.properties['NOM'] + "</li>";
-                        count++;
-                        countLocalities++;
-                    }
-                });
-
-                var modalBody = document.getElementById('spatial-result-body');
-                modalBody.innerHTML = count > 0 ? "<ul>" + results + "</ul>" : "Aucun élément trouvé dans cette zone.";
-                var resultModal = new bootstrap.Modal(document.getElementById('spatialResultModal'));
-                resultModal.show();
+            if (enable) {
+                map.dragging.disable();
+                mapContainer.style.cursor = 'crosshair';
                 
-                // Mise à jour du graphique et ouverture du panneau
-                updateChart(countSchools, countLocalities);
-                var offcanvasRight = new bootstrap.Offcanvas(document.getElementById('offcanvasRight'));
-                offcanvasRight.show();
+                // Afficher instruction
+                var info = document.getElementById('selection-info');
+                if (!info) {
+                    info = document.createElement('div');
+                    info.id = 'selection-info';
+                    info.className = 'alert alert-info fixed-top m-3 shadow';
+                    info.style.top = '60px';
+                    info.style.zIndex = 2000;
+                    info.innerHTML = '<i class="fas fa-vector-square me-2"></i> Dessinez un rectangle sur la carte. <button class="btn btn-sm btn-danger ms-3" onclick="toggleSpatialQueryMode(false)">Annuler</button>';
+                    document.body.appendChild(info);
+                } else {
+                    info.style.display = 'block';
+                }
+            } else {
+                map.dragging.enable();
+                mapContainer.style.cursor = '';
+                if (selectionRectangle) {
+                    map.removeLayer(selectionRectangle);
+                    selectionRectangle = null;
+                }
+                startLatLng = null;
+                var info = document.getElementById('selection-info');
+                if (info) info.style.display = 'none';
+            }
+        }
+
+        // Gestion des événements de dessin (Souris & Tactile)
+        map.on('mousedown touchstart', function(e) {
+            if (!spatialSelectionMode) return;
+            startLatLng = e.latlng;
+            if (selectionRectangle) map.removeLayer(selectionRectangle);
+            selectionRectangle = L.rectangle([startLatLng, startLatLng], {color: "#ff7800", weight: 1}).addTo(map);
+        });
+
+        map.on('mousemove touchmove', function(e) {
+            if (!spatialSelectionMode || !startLatLng || !selectionRectangle) return;
+            var currentLatLng = e.latlng;
+            // Pour le tactile, e.latlng est géré par Leaflet, mais attention aux événements multiples
+            if (e.originalEvent.type === 'touchmove') {
+                 e.originalEvent.preventDefault(); // Empêche le scroll
+            }
+            selectionRectangle.setBounds([startLatLng, currentLatLng]);
+        });
+
+        map.on('mouseup touchend', function(e) {
+            if (!spatialSelectionMode || !startLatLng || !selectionRectangle) return;
+            
+            var bounds = selectionRectangle.getBounds();
+            toggleSpatialQueryMode(false); // Désactiver le mode
+            
+            performSpatialQuery(bounds);
+        });
+
+        function performSpatialQuery(bounds) {
+            var results = "";
+            var count = 0;
+            var countSchools = 0;
+            var countLocalities = 0;
+
+            // Vérifier dans les écoles
+            layer_School_Kaolack_8.eachLayer(function(l) {
+                if(bounds.contains(l.getLatLng())) {
+                    results += "<li><b>Ecole:</b> " + (l.feature.properties['Nom'] || 'Inconnue') + "</li>";
+                    count++;
+                    countSchools++;
+                }
             });
+
+            // Vérifier dans les localités
+            layer_Localite_Kaolack_7.eachLayer(function(l) {
+                if(bounds.contains(l.getLatLng())) {
+                    results += "<li><b>Localité:</b> " + l.feature.properties['NOM'] + "</li>";
+                    count++;
+                    countLocalities++;
+                }
+            });
+
+            var modalBody = document.getElementById('spatial-result-body');
+            modalBody.innerHTML = count > 0 ? "<ul class='list-unstyled'>" + results + "</ul>" : "Aucun élément trouvé dans cette zone.";
+            var resultModal = new bootstrap.Modal(document.getElementById('spatialResultModal'));
+            resultModal.show();
+            
+            // Mise à jour du graphique et ouverture du panneau
+            updateChart(countSchools, countLocalities);
+            var offcanvasRight = new bootstrap.Offcanvas(document.getElementById('offcanvasRight'));
+            offcanvasRight.show();
+        }
+
+        window.enableSpatialQuery = function() {
+            toggleSpatialQueryMode(true);
         };
 
         // D. Téléchargement
