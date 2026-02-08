@@ -1379,7 +1379,7 @@
                 layer.eachLayer(function(l) {
                     if(l.feature.properties[prop] == value) {
                         // Amélioration : Gestion du zoom pour les points (Localités)
-                        if (l.getBounds && l.getBounds().isValid() && !l.getBounds().getNorthEast().equals(l.getBounds().getSouthWest())) {
+                        if (typeof l.getBounds === 'function' && l.getBounds().isValid() && !l.getBounds().getNorthEast().equals(l.getBounds().getSouthWest())) {
                             map.fitBounds(l.getBounds());
                         } else {
                             // Pour les points ou bounds invalides/nulls, on utilise setView avec un zoom raisonnable
@@ -1485,7 +1485,7 @@
 
             // 3. Routes (Lignes) - Intersection
             layer_Route_Kaolack_6.eachLayer(function(l) {
-                if(l.getBounds && bounds.intersects(l.getBounds())) {
+                if(typeof l.getBounds === 'function' && bounds.intersects(l.getBounds())) {
                     if(l.feature.properties['FONCTION']) {
                         roadFunctions.add(l.feature.properties['FONCTION']);
                     }
@@ -1494,7 +1494,7 @@
 
             // 4. Arrondissements (Polygones) - Intersection
             layer_Arrondissement_Kaolack_5.eachLayer(function(l) {
-                if(l.getBounds && bounds.intersects(l.getBounds())) {
+                if(typeof l.getBounds === 'function' && bounds.intersects(l.getBounds())) {
                     if(l.feature.properties['arr']) {
                         arrondissements.add(l.feature.properties['arr']);
                     }
@@ -1503,7 +1503,7 @@
 
             // 5. Départements (Polygones) - Intersection
             layer_Departement_Kaolack_4.eachLayer(function(l) {
-                if(l.getBounds && bounds.intersects(l.getBounds())) {
+                if(typeof l.getBounds === 'function' && bounds.intersects(l.getBounds())) {
                     if(l.feature.properties['dept']) {
                         departements.add(l.feature.properties['dept']);
                     }
@@ -1713,7 +1713,11 @@
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('./sw.js')
-                    .then(reg => console.log('Service Worker enregistré', reg))
+                    .then(reg => {
+                        console.log('Service Worker enregistré', reg);
+                        // Force la mise à jour du Service Worker pour éviter le cache
+                        reg.update();
+                    })
                     .catch(err => console.log('Erreur Service Worker', err));
             });
         }
