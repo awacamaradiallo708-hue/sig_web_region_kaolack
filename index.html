@@ -1187,7 +1187,7 @@
         updateMinimap();
 
         // --- Filter Control Logic ---
-        var filterControl = L.control({position: 'topright'});
+        var filterControl = L.control({position: 'bottomleft'});
         filterControl.onAdd = function (map) {
             var div = L.DomUtil.create('div', 'filter-control leaflet-bar');
             div.innerHTML = '<div class="bg-white p-2 rounded shadow-sm border">' +
@@ -1247,6 +1247,15 @@
         map.on('mousemove', function(e) {
             document.getElementById('mouse-coords').innerHTML = 
                 '<i class="fas fa-location-arrow me-1"></i>Lat: ' + e.latlng.lat.toFixed(4) + ', Lon: ' + e.latlng.lng.toFixed(4);
+        });
+
+        // Support mobile : Afficher les coordonnées du centre lors du déplacement
+        map.on('move', function() {
+            if (L.Browser.mobile || L.Browser.touch) {
+                var c = map.getCenter();
+                document.getElementById('mouse-coords').innerHTML = 
+                    '<i class="fas fa-crosshairs me-1"></i>Centre: ' + c.lat.toFixed(4) + ', ' + c.lng.toFixed(4);
+            }
         });
 
         // 5. Echelle dynamique
